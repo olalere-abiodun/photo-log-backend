@@ -18,6 +18,7 @@ from app.models.event import (
 )
 from app.crud import get_or_create_user
 from app.database import get_db
+from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/events", tags=["events"])
 
