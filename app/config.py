@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     # Cloudinary configuration
-    cloudinary_url: str = ""
+    # Cloudinary URL format: cloudinary://api_key:api_secret@cloud_name
+    cloudinary_url: Optional[str] = None
     
     # Admin emails (hardcoded for now, move to database later)
     # Can be set as comma-separated string in .env: ADMIN_EMAILS=admin@photolog.com,admin2@photolog.com

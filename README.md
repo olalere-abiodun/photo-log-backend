@@ -332,6 +332,13 @@ See [EMAIL_SETUP.md](./EMAIL_SETUP.md) for detailed setup instructions.
 - **Documentation**:
   - Updated `README.md` to reflect all new features and changes.
 
+## Recent Updates (Code Merge)
+
+*   **QR Code Generation**: Implemented QR code generation for event sharing links. The endpoint `/events/{event_id}/qr` now returns a PNG image of the QR code.
+*   **Configuration Improvement**: Made the `cloudinary_url` in the settings optional for better configuration flexibility.
+*   **Public Endpoints**: Enabled the public-facing API endpoints by including the `public` router in the main application.
+*   **Email Testing**: Added a troubleshooting section for testing email functionality.
+
 ## Troubleshooting
 
 ### Firebase credentials not found

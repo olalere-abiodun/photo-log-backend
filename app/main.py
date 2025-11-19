@@ -51,6 +51,7 @@ app.include_router(profiles.router)
 app.include_router(photos.router)
 app.include_router(events.router)
 app.include_router(admin.router)
+app.include_router(public.router)
 
 
 

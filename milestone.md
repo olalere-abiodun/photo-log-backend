@@ -99,6 +99,11 @@ Your Firebase Authentication backend with FastAPI is now complete! Here's what's
     - ✅ Configurable QR code size
     - ✅ Returns PNG image format
 
+14. **Refinements and New Features**
+   - ✅ Refined the settings management by making the `cloudinary_url` optional.
+   - ✅ Enabled public-facing API endpoints.
+   - ✅ Added a troubleshooting guide for email testing.
+
 ## 🚀 How to Run
 
 ### 1. Activate Virtual Environment

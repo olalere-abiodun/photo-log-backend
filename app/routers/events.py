@@ -1,10 +1,12 @@
 """
 Events router - handles all /events/* endpoints for host management.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Response
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import uuid
+import io
+import qrcode
 from sqlalchemy.orm import Session
 from app.dependencies import get_current_user
 
@@ -23,10 +25,56 @@ from app.dependencies import get_current_user
 from app.services.cloudinary import upload_image
 from app.crud import get_user_upload_size
 import cloudinary
+from app.config import settings
 
 router = APIRouter(prefix="/events", tags=["events"])
 
 # --- Helper Functions ---
+
+def generate_share_link(event_id: str) -> str:
+    """
+    Generate a public share link for an event.
+    Uses the frontend URL from settings.
+    """
+    # For now, using event ID as slug
+    # In the future, this could use a proper slug field
+    base_url = settings.frontend_url.rstrip('/')
+    return f"{base_url}/events/{event_id}"
+
+def event_to_response(event: EventModel, db: Session = None, photo_count: int = None) -> EventResponse:
+    """
+    Convert an Event model to EventResponse with computed fields.
+    """
+    from app.models.photo import Photo as PhotoModel
+    
+    # Count photos if not provided
+    if photo_count is None:
+        if db:
+            photo_count = db.query(PhotoModel).filter(PhotoModel.event_id == event.id).count()
+        else:
+            # Fallback: try to use relationship if loaded
+            photo_count = len(event.photos) if hasattr(event, 'photos') and event.photos else 0
+    
+    # Create response dict
+    response_dict = {
+        "id": event.id,
+        "host_id": event.host_id,
+        "name": event.name,
+        "description": event.description,
+        "date": event.date,
+        "password": event.password,
+        "cover_image_url": event.cover_image_url,
+        "cover_thumbnail_url": event.cover_thumbnail_url,
+        "cover_image_file_size": event.cover_image_file_size,
+        "is_active": event.is_active,
+        "is_archived": event.is_archived,
+        "created_at": event.created_at,
+        "updated_at": event.updated_at,
+        "photo_count": photo_count,
+        "share_link": generate_share_link(event.id)
+    }
+    
+    return EventResponse(**response_dict)
 
 def verify_event_ownership(db: Session, event_id: str, user_id: str) -> EventModel:
     """
@@ -67,7 +115,7 @@ async def create_event(
     db.commit()
     db.refresh(new_event)
     
-    return new_event
+    return event_to_response(new_event, db=db, photo_count=0)
 
 @router.get("", response_model=EventListResponse)
 async def list_events(
@@ -87,8 +135,11 @@ async def list_events(
     offset = (page - 1) * page_size
     events = query.offset(offset).limit(page_size).all()
     
+    # Convert events to response format with share links
+    event_responses = [event_to_response(event, db=db) for event in events]
+    
     return EventListResponse(
-        events=events,
+        events=event_responses,
         total=total_events,
         page=page,
         page_size=page_size,
@@ -105,7 +156,7 @@ async def get_event_detail(
     Get detailed information for a specific event.
     """
     event = verify_event_ownership(db, event_id, user["uid"])
-    return event
+    return event_to_response(event, db=db)
 
 @router.patch("/{event_id}", response_model=EventResponse)
 async def update_event_metadata(
@@ -127,7 +178,7 @@ async def update_event_metadata(
     db.commit()
     db.refresh(event)
     
-    return event
+    return event_to_response(event, db=db)
 
 @router.delete("/{event_id}", response_model=MessageResponse)
 async def delete_event(
@@ -209,23 +260,49 @@ async def upload_event_cover_image(
     
     return event
 
-@router.get("/{event_id}/qr", response_model=MessageResponse)
+@router.get("/{event_id}/qr")
 async def get_event_qr_code(
     event_id: str,
     user: Dict[str, Any] = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    size: int = Query(10, ge=1, le=20, description="QR code size (1-20, default 10)")
 ):
     """
     Generate and retrieve a QR code for the event's public sharing link.
-    (This endpoint is a placeholder).
+    Returns a PNG image of the QR code that can be scanned to access the event.
     """
-    verify_event_ownership(db, event_id, user["uid"])
-    # TODO: Implement QR code generation logic.
-    # This would typically involve a library like `qrcode` to generate an image
-    # of the event's `share_link` and return it or its URL.
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="QR code generation is not yet implemented."
+    event = verify_event_ownership(db, event_id, user["uid"])
+    
+    # Generate the share link
+    share_link = generate_share_link(event_id)
+    
+    # Create QR code instance
+    qr = qrcode.QRCode(
+        version=1,  # Controls the size of the QR code (1 is smallest)
+        error_correction=qrcode.constants.ERROR_CORRECT_L,  # Error correction level
+        box_size=size,  # Size of each box in pixels
+        border=4,  # Border thickness in boxes
+    )
+    
+    # Add data to QR code
+    qr.add_data(share_link)
+    qr.make(fit=True)
+    
+    # Create image from QR code
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert image to bytes
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format='PNG')
+    img_bytes.seek(0)
+    
+    # Return image as response
+    return Response(
+        content=img_bytes.getvalue(),
+        media_type="image/png",
+        headers={
+            "Content-Disposition": f'inline; filename="event-{event_id}-qr.png"'
+        }
     )
 
 @router.post("/{event_id}/download", response_model=MessageResponse)

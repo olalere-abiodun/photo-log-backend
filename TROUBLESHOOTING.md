@@ -62,6 +62,58 @@ pip install email-validator
 1. Check `.env` file has: `FRONTEND_URL=http://localhost:5173`
 2. Make sure CORS middleware is configured in `app/main.py`
 
+### Error: `Email not sending`
+
+**Problem**: Emails are not being sent or received.
+
+**Solution**:
+1.  **Verify `.env` Configuration**: Ensure the following variables are correctly set in your `.env` file:
+    *   `EMAIL_ENABLED=true`
+    *   `EMAIL_FROM`
+    *   `SMTP_SERVER`
+    *   `SMTP_PORT`
+    *   `SMTP_USERNAME`
+    *   `SMTP_PASSWORD` (For Gmail, this should be an App Password, not your regular account password.)
+2.  **Check Gmail App Password (if using Gmail)**: If you are using Gmail, make sure you have generated and are using an App Password. Refer to [EMAIL_SETUP.md](./EMAIL_SETUP.md) for detailed instructions.
+3.  **Run a Test Script**: You can run a simple Python script to test your email configuration independently.
+    *   Create a file named `test_email.py` in your project root with the following content:
+        ```python
+        import asyncio
+        from app.services.email import email_service
+        from app.config import settings
+
+        RECIPIENT_EMAIL = "your_test_email@example.com" # REPLACE WITH YOUR EMAIL
+
+        async def send_test_email():
+            print(f"Attempting to send a test email to {RECIPIENT_EMAIL}...")
+            if not settings.email_enabled:
+                print("Email sending is disabled in the configuration.")
+                return
+            if not all([settings.smtp_server, settings.smtp_port, settings.smtp_username, settings.smtp_password, settings.email_from]):
+                print("SMTP settings are not fully configured in your .env file.")
+                print("Please ensure SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, and EMAIL_FROM are set.")
+                return
+            try:
+                success = email_service.send_welcome_email(
+                    user_email=RECIPIENT_EMAIL,
+                    user_name="Test User"
+                )
+                if success:
+                    print("✅ Test email sent successfully!")
+                    print(f"Please check the inbox of {RECIPIENT_EMAIL} (and the spam folder) to confirm receipt.")
+                else:
+                    print("❌ Failed to send test email. Check logs for details.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+        if __name__ == "__main__":
+            asyncio.run(send_test_email())
+        ```
+    *   **Replace `"your_test_email@example.com"`** with an actual email address you can check.
+    *   Run the script from your terminal: `python test_email.py`
+    *   Check the output for success or error messages, and check the recipient's inbox (and spam folder).
+    *   Delete `test_email.py` after testing.
+
 ### Error: `Image uploads are failing`
 
 **Problem**: The Cloudinary URL is not configured correctly.
