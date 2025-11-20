@@ -37,12 +37,15 @@ async def startup_event():
 
 
 # Configure CORS
-# Read allowed origins from environment variable (comma-separated list)
-allowed_origins = settings.get_cors_origins_list()
+allowed_origins = [
+    "https://photo-log-ashy.vercel.app",
+    "https://photo-log-ashy.vercel.app/",
+    "http://localhost:5173",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins + ["https://photo-log-ashy.vercel.app"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
