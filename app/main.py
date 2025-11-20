@@ -37,9 +37,12 @@ async def startup_event():
 
 
 # Configure CORS
+# Read allowed origins from environment variable (comma-separated list)
+allowed_origins = settings.get_cors_origins_list()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
