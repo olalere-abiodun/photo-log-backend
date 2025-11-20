@@ -39,7 +39,7 @@ def generate_share_link(event_id: str) -> str:
     # For now, using event ID as slug
     # In the future, this could use a proper slug field
     base_url = settings.frontend_url.rstrip('/')
-    return f"{base_url}/events/{event_id}"
+    return f"{base_url}/event/{event_id}"
 
 def event_to_response(event: EventModel, db: Session = None, photo_count: int = None) -> EventResponse:
     """
